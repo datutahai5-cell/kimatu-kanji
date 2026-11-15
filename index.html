@@ -1,0 +1,1439 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>小学校 漢字期末テスト対策プリント作成アプリ</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: 教科書体に近い明朝体・ゴシック体 -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Shippori+Mincho:wght@500;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background-color: #f1f5f9;
+        }
+
+        /* プリント用のフォント設定（教科書風明朝体） */
+        .print-font {
+            font-family: 'Shippori Mincho', 'Yu Mincho', 'Hiragino Mincho ProN', serif;
+        }
+
+        /* 縦書き設定 */
+        .vertical-rl {
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+        }
+
+        /* A4用紙プレビューコンテナ (210mm x 297mm) */
+        .a4-sheet {
+            width: 210mm;
+            height: 297mm;
+            background: white;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+            padding: 10mm 10mm;
+            box-sizing: border-box;
+            margin: 0 auto;
+            position: relative;
+            color: #000;
+        }
+
+        /* プリント内のグリッドレイアウト（添付画像準拠） */
+        .worksheet-wrapper {
+            display: flex;
+            width: 100%;
+            height: 100%;
+            gap: 4mm;
+        }
+
+        /* 左側：36問のグリッド（6列 × 6行） */
+        /* 1〜24問(4列分): 書き問題 / 25〜36問(2列分): 読み問題 */
+        .questions-grid {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            grid-template-rows: repeat(6, 1fr);
+            border: 2px solid #000;
+            height: 100%;
+        }
+
+        /* 各問題セル */
+        .q-cell {
+            border-right: 1px solid #000;
+            border-bottom: 1px solid #000;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* 一番右の列（1〜6番）の右枠線を消す（親のborderと重複防止） */
+        .q-cell:nth-child(6n) {
+            border-right: none;
+        }
+        /* 一番下の行（6,12,18,24,30,36番）の下枠線を消す */
+        .q-cell:nth-child(n+31) {
+            border-bottom: none;
+        }
+
+        /* 問題番号ヘッダー（横書き中央揃え） */
+        .q-header {
+            height: 6.5mm;
+            border-bottom: 1px dashed #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11pt;
+            font-weight: 700;
+            font-family: 'Noto Sans JP', sans-serif;
+            letter-spacing: 0.1em;
+            background-color: #fff;
+        }
+
+        /* 問題ボディ（右側に問題文・ルビ、左側に解答マス） */
+        .q-body {
+            flex: 1;
+            display: flex;
+            flex-direction: row-reverse; /* 右から左へ配置 */
+            height: calc(100% - 6.5mm);
+        }
+
+        /* 右側：問題文・ルビエリア */
+        .q-prompt-area {
+            width: 34%;
+            border-left: 1px dashed #333;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1.5mm 0.5mm;
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            font-size: 9.5pt;
+            line-height: 1.15;
+            letter-spacing: 0.05em;
+            word-break: break-all;
+            text-align: center;
+        }
+
+        /* 読み問題（25〜36番）の時は漢字を目立たせる */
+        .q-cell.reading-type .q-prompt-area {
+            font-size: 11pt;
+            font-weight: 700;
+        }
+
+        /* 左側：解答記入スペース */
+        .q-answer-area {
+            flex: 1;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* プレビュー上のセルクリック＆選択中ハイライト（画面表示のみ） */
+        @media screen {
+            .q-cell {
+                cursor: pointer;
+                transition: background-color 0.15s ease, box-shadow 0.15s ease;
+            }
+            .q-cell:hover {
+                background-color: #f8fafc;
+            }
+            .q-cell.active-cell {
+                background-color: #eff6ff !important;
+                box-shadow: inset 0 0 0 2.5px #3b82f6;
+                z-index: 5;
+            }
+            .q-cell.active-cell .q-header {
+                background-color: #dbeafe;
+                color: #1d4ed8;
+            }
+        }
+
+        /* 解答表示モード時の赤字テキスト */
+        .answer-overlay {
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            color: #dc2626;
+            font-weight: 700;
+            font-size: 15pt;
+            letter-spacing: 0.1em;
+            z-index: 10;
+            background: rgba(255, 255, 255, 0.85);
+            padding: 1mm;
+            border-radius: 2px;
+        }
+
+        .q-cell.reading-type .answer-overlay {
+            font-size: 11pt;
+        }
+
+        /* 右側サイドバー（タイトル・名前欄） */
+        .right-sidebar {
+            width: 14mm;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            height: 100%;
+        }
+
+        /* タイトル枠 */
+        .title-box {
+            border: 1.5px solid #000;
+            height: 54%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 3mm 0;
+            writing-mode: vertical-rl;
+            text-orientation: upright;
+            font-size: 14pt;
+            font-weight: 700;
+            letter-spacing: 0.18em;
+        }
+
+        /* 名前枠 */
+        .name-box {
+            border: 1.5px solid #000;
+            height: 36%;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .name-label {
+            border-bottom: 1.5px solid #000;
+            height: 7mm;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10pt;
+            font-weight: 700;
+            font-family: 'Noto Sans JP', sans-serif;
+        }
+
+        .name-space {
+            flex: 1;
+        }
+
+        /* 印刷用メディアクエリ（PDF保存・印刷時にUIを隠してA4用紙のみ出力） */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 0;
+            }
+            body {
+                background: white !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .print-container {
+                padding: 0 !important;
+                margin: 0 !important;
+                width: 100% !important;
+                height: 100% !important;
+                display: block !important;
+                overflow: visible !important;
+            }
+            .a4-sheet {
+                box-shadow: none !important;
+                margin: 0 !important;
+                width: 210mm !important;
+                height: 297mm !important;
+                page-break-after: always;
+            }
+        }
+
+        /* カスタムスクロールバー */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden text-slate-800">
+
+    <!-- ヘッダーナビゲーション（印刷時は非表示） -->
+    <header class="no-print bg-indigo-700 text-white px-4 py-3 shadow-md flex flex-wrap items-center justify-between gap-3 z-20">
+        <div class="flex items-center gap-2.5">
+            <div class="bg-white/20 p-2 rounded-lg">
+                <i data-lucide="book-open-check" class="w-6 h-6 text-white"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg leading-tight tracking-wide">漢字期末対策プリントメーカー</h1>
+                <p class="text-xs text-indigo-200">1〜24問：漢字の書き ／ 25〜36問：漢字の読み（全36問・A4縦）</p>
+            </div>
+        </div>
+
+        <!-- 学年・学期・操作ボタン群 -->
+        <div class="flex flex-wrap items-center gap-2">
+            <!-- 学年選択 -->
+            <div class="flex items-center bg-indigo-800/70 rounded-lg px-2.5 py-1.5 border border-indigo-500/50">
+                <label for="gradeSelect" class="text-xs text-indigo-200 mr-1.5 font-medium">学年:</label>
+                <select id="gradeSelect" class="bg-transparent text-white font-bold text-sm focus:outline-none cursor-pointer">
+                    <option value="1" class="text-slate-800">1年</option>
+                    <option value="2" class="text-slate-800">2年</option>
+                    <option value="3" class="text-slate-800" selected>3年</option>
+                    <option value="4" class="text-slate-800">4年</option>
+                    <option value="5" class="text-slate-800">5年</option>
+                    <option value="6" class="text-slate-800">6年</option>
+                </select>
+            </div>
+
+            <!-- 学期選択 -->
+            <div class="flex items-center bg-indigo-800/70 rounded-lg px-2.5 py-1.5 border border-indigo-500/50">
+                <label for="termSelect" class="text-xs text-indigo-200 mr-1.5 font-medium">学期:</label>
+                <select id="termSelect" class="bg-transparent text-white font-bold text-sm focus:outline-none cursor-pointer">
+                    <option value="1" class="text-slate-800">1学期</option>
+                    <option value="2" class="text-slate-800" selected>2学期</option>
+                    <option value="3" class="text-slate-800">3学期</option>
+                </select>
+            </div>
+
+            <div class="h-6 w-px bg-indigo-500/50 mx-1 hidden sm:block"></div>
+
+            <!-- 解答表示切替 -->
+            <button id="toggleAnswerBtn" onclick="toggleAnswers()" class="flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white font-medium text-sm px-3 py-1.5 rounded-lg shadow transition cursor-pointer">
+                <i data-lucide="eye" class="w-4 h-4"></i>
+                <span id="toggleAnswerText">模範解答を表示</span>
+            </button>
+
+            <!-- Googleスプレッドシート連携ボタン -->
+            <button onclick="openSheetsModal()" class="flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-sm px-3 py-1.5 rounded-lg shadow transition cursor-pointer">
+                <i data-lucide="sheet" class="w-4 h-4"></i>
+                <span>スプレッドシート連携</span>
+            </button>
+
+            <!-- PDFダウンロード（印刷）ボタン -->
+            <button onclick="downloadPDF()" class="flex items-center gap-1.5 bg-white text-indigo-700 hover:bg-indigo-50 font-bold text-sm px-4 py-1.5 rounded-lg shadow transition cursor-pointer">
+                <i data-lucide="printer" class="w-4 h-4"></i>
+                <span>PDF保存 / 印刷</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- メインワークスペース -->
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+
+        <!-- 左ペイン：問題入力エディタ（印刷時は非表示） -->
+        <aside class="no-print w-full lg:w-[500px] xl:w-[540px] bg-white border-r border-slate-200 flex flex-col h-1/2 lg:h-full z-10 shadow-sm">
+            <!-- エディタヘッダー・タブ -->
+            <div class="p-3 bg-slate-50 border-b border-slate-200 flex flex-col gap-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-bold text-slate-600 flex items-center gap-1.5">
+                        <i data-lucide="edit-3" class="w-4 h-4 text-indigo-600"></i>
+                        <span>問題編集（Enterで次へ／右のマスクリックで移動）</span>
+                    </span>
+                </div>
+
+                <!-- プリントタイトルカスタム入力 -->
+                <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-300 shadow-2xs">
+                    <label class="text-xs font-bold text-slate-600 whitespace-nowrap">プリント題名:</label>
+                    <input type="text" id="customTitleInput" class="flex-1 text-sm font-bold text-slate-800 focus:outline-none border-b border-transparent focus:border-indigo-500" placeholder="例：３年　国語期末対策プリント">
+                </div>
+
+                <!-- 列ごと（6問ずつ）切り替えナビゲーション（スクロール不要） -->
+                <div class="space-y-1">
+                    <div class="flex items-center justify-between text-[11px] font-bold text-slate-500 px-0.5">
+                        <span>表示する列を選択（1画面6問・スクロール不要）:</span>
+                        <button onclick="toggleCompactMode()" id="compactModeBtn" class="text-indigo-600 hover:text-indigo-800 underline cursor-pointer">
+                            全36問をコンパクト一覧で表示
+                        </button>
+                    </div>
+                    <div class="grid grid-cols-6 gap-1 bg-slate-200/80 p-1 rounded-lg text-[11px] font-bold">
+                        <button onclick="selectGroup(0)" id="grp-0" class="py-1.5 rounded-md bg-indigo-600 text-white shadow-sm transition cursor-pointer leading-tight">
+                            1〜6<br><span class="text-[9px] font-normal opacity-90">書き①</span>
+                        </button>
+                        <button onclick="selectGroup(1)" id="grp-1" class="py-1.5 rounded-md bg-white text-slate-700 hover:bg-indigo-50 transition cursor-pointer leading-tight">
+                            7〜12<br><span class="text-[9px] font-normal text-indigo-600">書き②</span>
+                        </button>
+                        <button onclick="selectGroup(2)" id="grp-2" class="py-1.5 rounded-md bg-white text-slate-700 hover:bg-indigo-50 transition cursor-pointer leading-tight">
+                            13〜18<br><span class="text-[9px] font-normal text-indigo-600">書き③</span>
+                        </button>
+                        <button onclick="selectGroup(3)" id="grp-3" class="py-1.5 rounded-md bg-white text-slate-700 hover:bg-indigo-50 transition cursor-pointer leading-tight">
+                            19〜24<br><span class="text-[9px] font-normal text-indigo-600">書き④</span>
+                        </button>
+                        <button onclick="selectGroup(4)" id="grp-4" class="py-1.5 rounded-md bg-white text-slate-700 hover:bg-amber-50 transition cursor-pointer leading-tight">
+                            25〜30<br><span class="text-[9px] font-normal text-amber-600">読み①</span>
+                        </button>
+                        <button onclick="selectGroup(5)" id="grp-5" class="py-1.5 rounded-md bg-white text-slate-700 hover:bg-amber-50 transition cursor-pointer leading-tight">
+                            31〜36<br><span class="text-[9px] font-normal text-amber-600">読み②</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 入力リストエリア -->
+            <div id="inputsListContainer" class="flex-1 overflow-y-auto p-3 space-y-2 bg-slate-100/70">
+                <!-- JSで動的に生成 -->
+            </div>
+
+            <!-- 下部ページ送りフッター（6問表示モード時） -->
+            <div id="groupNavFooter" class="p-2.5 bg-white border-t border-slate-200 flex items-center justify-between text-xs">
+                <button onclick="prevGroup()" id="prevGroupBtn" class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold disabled:opacity-40 cursor-pointer">
+                    <i data-lucide="chevron-left" class="w-4 h-4"></i> 前の6問へ
+                </button>
+                <span id="groupIndicatorText" class="font-bold text-slate-600">1〜6問目（漢字の書き・1列目）</span>
+                <button onclick="nextGroup()" id="nextGroupBtn" class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold disabled:opacity-40 cursor-pointer">
+                    次の6問へ <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                </button>
+            </div>
+        </aside>
+
+        <!-- 右ペイン：A4プリントリアルタイムプレビュー -->
+        <main class="print-container flex-1 bg-slate-200/80 overflow-auto p-4 sm:p-8 flex flex-col items-center">
+            <!-- プレビュー操作バー（印刷時非表示） -->
+            <div class="no-print w-full max-w-[210mm] mb-3 flex items-center justify-between text-xs text-slate-600 bg-white/80 backdrop-blur px-3 py-2 rounded-lg shadow-sm">
+                <div class="flex items-center gap-2">
+                    <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                    <span>A4縦サイズ（210mm × 297mm）リアルタイムプレビュー</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span>表示倍率:</span>
+                    <button onclick="setZoom(0.65)" class="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded font-medium cursor-pointer">65%</button>
+                    <button onclick="setZoom(0.85)" class="px-2 py-0.5 bg-slate-100 hover:bg-slate-200 rounded font-medium cursor-pointer">85%</button>
+                    <button onclick="setZoom(1.0)" class="px-2 py-0.5 bg-indigo-100 text-indigo-700 hover:bg-indigo-200 rounded font-bold cursor-pointer">100%</button>
+                </div>
+            </div>
+
+            <!-- A4用紙本体 -->
+            <div id="previewZoomWrapper" class="transition-transform origin-top duration-200">
+                <div id="a4Sheet" class="a4-sheet print-font">
+                    <div class="worksheet-wrapper">
+                        <!-- 左側：36問グリッド（右上の1番から縦に進み、左下の36番へ） -->
+                        <div id="questionsGrid" class="questions-grid">
+                            <!-- JSで36マスを生成 -->
+                        </div>
+
+                        <!-- 右側：タイトル枠と名前枠 -->
+                        <div class="right-sidebar">
+                            <div id="sheetTitleBox" class="title-box">
+                                ３年　国語期末対策プリント
+                            </div>
+                            <div class="name-box">
+                                <div class="name-label">名前</div>
+                                <div class="name-space"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Googleスプレッドシート連携モーダル -->
+    <div id="sheetsModal" class="no-print fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col overflow-hidden">
+            <div class="px-6 py-4 bg-emerald-700 text-white flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="sheet" class="w-5 h-5"></i>
+                    <h2 class="font-bold text-lg">Googleスプレッドシート バックアップ・読込</h2>
+                </div>
+                <button onclick="closeSheetsModal()" class="text-emerald-100 hover:text-white p-1 rounded-lg cursor-pointer">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto space-y-5 text-sm">
+                <!-- ステップ1: GAS WebアプリURL設定 -->
+                <div class="bg-emerald-50 border border-emerald-200 rounded-xl p-4 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <h3 class="font-bold text-emerald-900 flex items-center gap-1.5">
+                            <span class="bg-emerald-600 text-white w-5 h-5 rounded-full inline-flex items-center justify-center text-xs">1</span>
+                            Google Apps Script (GAS) ウェブアプリURL
+                        </h3>
+                        <button onclick="toggleGasCode()" class="text-xs text-emerald-700 underline font-medium hover:text-emerald-900 cursor-pointer">
+                            連携用スクリプトコードを表示
+                        </button>
+                    </div>
+                    <p class="text-xs text-emerald-800 leading-relaxed">
+                        先生ご自身のGoogleスプレッドシートに以下のスクリプトを設定して発行した「ウェブアプリのURL」を貼り付けると、ワンクリックでバックアップと復元が可能になります。
+                    </p>
+                    <div class="flex gap-2">
+                        <input type="url" id="gasUrlInput" placeholder="https://script.google.com/macros/s/...../exec" class="flex-1 px-3 py-2 border border-emerald-300 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 bg-white">
+                        <button onclick="saveGasUrl()" class="bg-emerald-700 hover:bg-emerald-800 text-white font-bold px-4 py-2 rounded-lg text-xs transition cursor-pointer">
+                            URLを保存
+                        </button>
+                    </div>
+
+                    <!-- 折りたたみ可能なGASコード案内 -->
+                    <div id="gasCodeBox" class="hidden pt-2 border-t border-emerald-200 space-y-2">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold text-emerald-900">スプレッドシート「拡張機能 ＞ Apps Script」に貼り付けるコード：</span>
+                            <button onclick="copyGasCode()" class="text-xs bg-white border border-emerald-300 hover:bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded font-medium flex items-center gap-1 cursor-pointer">
+                                <i data-lucide="copy" class="w-3 h-3"></i> コードをコピー
+                            </button>
+                        </div>
+                        <pre id="gasCodeText" class="bg-slate-900 text-slate-100 p-3 rounded-lg text-[11px] overflow-x-auto leading-relaxed font-mono">function doGet(e) {
+  const sheet = getOrCreateSheet();
+  const action = e.parameter.action || "load";
+  const data = sheet.getDataRange().getValues();
+
+  // 保存済み一覧を返す
+  if (action === "list") {
+    const list = [];
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][0]) {
+        const parts = String(data[i][0]).split("_");
+        list.push({
+          key: String(data[i][0]),
+          grade: parts[0] || "",
+          term: parts[1] || "",
+          title: data[i][1] || "",
+          updatedAt: data[i][3] ? Utilities.formatDate(new Date(data[i][3]), "Asia/Tokyo", "yyyy/MM/dd HH:mm") : ""
+        });
+      }
+    }
+    return jsonResponse({ status: "success", list: list });
+  }
+
+  // 特定の学年・学期を読み込む
+  const grade = e.parameter.grade || "3";
+  const term = e.parameter.term || "2";
+  const key = grade + "_" + term;
+  
+  for (let i = 1; i < data.length; i++) {
+    if (String(data[i][0]) === key) {
+      return jsonResponse({
+        status: "success",
+        title: data[i][1],
+        questions: JSON.parse(data[i][2])
+      });
+    }
+  }
+  return jsonResponse({ status: "not_found" });
+}
+
+function doPost(e) {
+  try {
+    const sheet = getOrCreateSheet();
+    const raw = e.postData ? e.postData.contents : "{}";
+    const body = JSON.parse(raw);
+    const key = body.grade + "_" + body.term;
+    const data = sheet.getDataRange().getValues();
+    let rowIndex = -1;
+    
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]) === key) {
+        rowIndex = i + 1;
+        break;
+      }
+    }
+    
+    const rowValues = [key, body.title, JSON.stringify(body.questions), new Date()];
+    if (rowIndex > 0) {
+      sheet.getRange(rowIndex, 1, 1, 4).setValues([rowValues]);
+    } else {
+      sheet.appendRow(rowValues);
+    }
+    
+    return jsonResponse({ status: "saved", key: key });
+  } catch (err) {
+    return jsonResponse({ status: "error", message: err.toString() });
+  }
+}
+
+function jsonResponse(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function getOrCreateSheet() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sheet = ss.getSheetByName("漢字プリントDB");
+  if (!sheet) {
+    sheet = ss.insertSheet("漢字プリントDB");
+    sheet.appendRow(["学年_学期", "プリント題名", "問題JSON", "更新日時"]);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}</pre>
+                        <div class="bg-white/80 p-2.5 rounded-lg border border-emerald-200 text-[11px] text-emerald-900 space-y-1">
+                            <p class="font-bold">【初期設定の手順（初回のみ）】</p>
+                            <ol class="list-decimal list-inside space-y-0.5">
+                                <li>Googleスプレッドシートを開き、上部メニュー「拡張機能」＞「Apps Script」をクリック</li>
+                                <li>元のコードを消して上のコードを貼り付け、フロッピーアイコン（保存）を押す</li>
+                                <li>右上の青い「デプロイ」＞「新しいデプロイ」をクリック</li>
+                                <li>種類の歯車アイコンから「ウェブアプリ」を選択し、アクセスできるユーザーを<strong>「全員」</strong>にしてデプロイ</li>
+                                <li>発行された「ウェブアプリのURL」をコピーして上の入力欄に貼り付けて保存</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ステップ2: バックアップと読み込み実行 -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <!-- 保存 -->
+                    <div class="border border-slate-200 rounded-xl p-4 flex flex-col justify-between gap-3 bg-slate-50">
+                        <div>
+                            <h4 class="font-bold text-slate-800 flex items-center gap-1.5 mb-1">
+                                <i data-lucide="cloud-upload" class="w-4 h-4 text-indigo-600"></i>
+                                スプレッドシートへ保存
+                            </h4>
+                            <p class="text-xs text-slate-600">
+                                現在編集中の「<span class="font-bold text-indigo-700 current-gt-label">3年 2学期</span>」の問題36問をスプレッドシートに保存（上書き）します。
+                            </p>
+                        </div>
+                        <button onclick="backupToSheets()" id="btnBackupSheets" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-lg text-xs shadow transition flex items-center justify-center gap-1.5 cursor-pointer">
+                            <i data-lucide="upload" class="w-4 h-4"></i> スプレッドシートに保存する
+                        </button>
+                    </div>
+
+                    <!-- 読込 -->
+                    <div class="border border-slate-200 rounded-xl p-4 flex flex-col justify-between gap-3 bg-slate-50">
+                        <div>
+                            <h4 class="font-bold text-slate-800 flex items-center gap-1.5 mb-1">
+                                <i data-lucide="cloud-download" class="w-4 h-4 text-emerald-600"></i>
+                                スプレッドシートから呼び出し
+                            </h4>
+                            <p class="text-xs text-slate-600">
+                                保存済みの「<span class="font-bold text-emerald-700 current-gt-label">3年 2学期</span>」のデータをスプレッドシートから呼び出します。
+                            </p>
+                        </div>
+                        <button onclick="restoreFromSheets()" id="btnRestoreSheets" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg text-xs shadow transition flex items-center justify-center gap-1.5 cursor-pointer">
+                            <i data-lucide="download" class="w-4 h-4"></i> この学年・学期を呼び出す
+                        </button>
+                    </div>
+                </div>
+
+                <!-- ステップ3: スプレッドシート内の保存済み一覧から直接呼び出し -->
+                <div class="border border-slate-200 rounded-xl p-4 bg-white space-y-2.5">
+                    <div class="flex items-center justify-between">
+                        <h4 class="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                            <i data-lucide="list-checks" class="w-4 h-4 text-indigo-600"></i>
+                            スプレッドシートに保存済みのプリント一覧
+                        </h4>
+                        <button onclick="fetchSavedListFromSheets()" id="btnRefreshList" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 cursor-pointer">
+                            <i data-lucide="refresh-cw" class="w-3 h-3"></i> 一覧を更新
+                        </button>
+                    </div>
+                    <div id="savedSheetsListContainer" class="text-xs text-slate-500 bg-slate-50 rounded-lg p-3 border border-slate-200/80 max-h-40 overflow-y-auto">
+                        URLを保存して「一覧を更新」を押すと、スプレッドシート内の保存済みプリントが表示されます。
+                    </div>
+                </div>
+
+                <!-- 代替手段：CSV ファイルでのバックアップ -->
+                <div class="border-t border-slate-200 pt-4 space-y-2">
+                    <h4 class="font-bold text-slate-700 text-xs flex items-center gap-1.5">
+                        <i data-lucide="file-spreadsheet" class="w-4 h-4 text-slate-500"></i>
+                        URL設定不要の代替手段（CSV形式でスプレッドシートに手動保存・読込）
+                    </h4>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="exportCSV()" class="bg-slate-700 hover:bg-slate-800 text-white text-xs font-medium px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition cursor-pointer">
+                            <i data-lucide="file-down" class="w-4 h-4"></i> CSVをダウンロード（スプレッドシート用）
+                        </button>
+                        <label class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-medium px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition cursor-pointer">
+                            <i data-lucide="file-up" class="w-4 h-4"></i> CSVファイルから読み込み
+                            <input type="file" id="csvFileInput" accept=".csv" class="hidden" onchange="importCSV(event)">
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 通知トースト -->
+    <div id="toastContainer" class="no-print fixed bottom-5 right-5 z-50 flex flex-col gap-2"></div>
+
+    <script>
+        // ==========================================
+        // アプリケーション状態管理（メモリ内データストア）
+        // ==========================================
+        const TOTAL_QUESTIONS = 36;
+        let currentGrade = '3';
+        let currentTerm = '2';
+        let showAnswers = false;
+        let currentZoom = 1.0;
+        let gasWebAppUrl = '';
+        let activeQuestionNum = 1;
+        let currentGroup = 0; // 0: 1-6, 1: 7-12, 2: 13-18, 3: 19-24, 4: 25-30, 5: 31-36
+        let isCompactMode = false;
+
+        // 学年_学期 ごとのデータを保持するオブジェクト
+        const store = {};
+
+        // 数字を全角に変換するヘルパー
+        function toFullWidthNum(n) {
+            return String(n).replace(/[0-9]/g, s => String.fromCharCode(s.charCodeAt(0) + 0xFEE0));
+        }
+
+        // 空の問題セット（36問）生成
+        function createEmptyDataset(grade, term) {
+            const questions = [];
+            for (let i = 1; i <= TOTAL_QUESTIONS; i++) {
+                questions.push({
+                    num: i,
+                    type: i <= 24 ? 'writing' : 'reading',
+                    prompt: '',
+                    answer: ''
+                });
+            }
+            return {
+                title: `${toFullWidthNum(grade)}年　国語期末対策プリント`,
+                questions: questions
+            };
+        }
+
+        // 現在の学年・学期のデータ取得
+        function getCurrentData() {
+            const key = `${currentGrade}_${currentTerm}`;
+            if (!store[key]) {
+                store[key] = createEmptyDataset(currentGrade, currentTerm);
+            }
+            return store[key];
+        }
+
+        // ==========================================
+        // 画面描画ロジック
+        // ==========================================
+
+        // 左側エディタの入力欄を生成
+        function renderInputs() {
+            const container = document.getElementById('inputsListContainer');
+            const data = getCurrentData();
+            document.getElementById('customTitleInput').value = data.title;
+
+            // タブ・フッターのアクティブ状態更新
+            updateGroupTabsUI();
+
+            container.innerHTML = '';
+
+            // 表示対象の問題範囲を決定
+            const startNum = isCompactMode ? 1 : (currentGroup * 6 + 1);
+            const endNum = isCompactMode ? TOTAL_QUESTIONS : (currentGroup * 6 + 6);
+
+            // 6問表示モード時は列のガイドバナーを表示
+            if (!isCompactMode) {
+                const isWriting = currentGroup < 4;
+                const colBanner = document.createElement('div');
+                colBanner.className = isWriting
+                    ? 'bg-indigo-50 border border-indigo-200 text-indigo-900 rounded-lg px-3 py-2 flex items-center justify-between text-xs'
+                    : 'bg-amber-50 border border-amber-200 text-amber-900 rounded-lg px-3 py-2 flex items-center justify-between text-xs';
+                colBanner.innerHTML = `
+                    <div class="font-bold flex items-center gap-1.5">
+                        <span class="px-2 py-0.5 rounded text-white text-[11px] ${isWriting ? 'bg-indigo-600' : 'bg-amber-600'}">
+                            ${isWriting ? '漢字の書き' : '漢字の読み'}
+                        </span>
+                        <span>${startNum}問目 〜 ${endNum}問目（プリント縦1列分）</span>
+                    </div>
+                    <span class="text-[11px] opacity-80">${isWriting ? '出題：ひらがな → 答え：漢字' : '出題：漢字 → 答え：ふりがな'}</span>
+                `;
+                container.appendChild(colBanner);
+            }
+
+            data.questions.forEach((q, idx) => {
+                if (q.num < startNum || q.num > endNum) return;
+
+                const isWriting = q.num <= 24;
+                const isActive = q.num === activeQuestionNum;
+
+                if (isCompactMode) {
+                    // 【コンパクト一覧モード】1行1問のスリム表示
+                    if (q.num === 1) {
+                        const h = document.createElement('div');
+                        h.className = 'bg-indigo-600 text-white text-xs font-bold px-2.5 py-1 rounded flex justify-between';
+                        h.innerHTML = '<span>▼ 1〜24問：漢字の書き</span><span class="text-[10px] font-normal">出題（ひらがな） ／ 答え（漢字）</span>';
+                        container.appendChild(h);
+                    } else if (q.num === 25) {
+                        const h = document.createElement('div');
+                        h.className = 'bg-amber-600 text-white text-xs font-bold px-2.5 py-1 rounded flex justify-between mt-3';
+                        h.innerHTML = '<span>▼ 25〜36問：漢字の読み</span><span class="text-[10px] font-normal">出題（漢字） ／ 答え（ふりがな）</span>';
+                        container.appendChild(h);
+                    }
+
+                    const row = document.createElement('div');
+                    row.id = `input-card-${q.num}`;
+                    row.className = `flex items-center gap-1.5 bg-white px-2 py-1.5 rounded-lg border transition ${
+                        isActive ? 'border-blue-500 ring-2 ring-blue-100 bg-blue-50/30' : 'border-slate-200'
+                    }`;
+                    row.innerHTML = `
+                        <span class="w-7 text-center text-xs font-bold py-0.5 rounded ${isWriting ? 'bg-indigo-100 text-indigo-800' : 'bg-amber-100 text-amber-800'}">${q.num}</span>
+                        <input type="text"
+                            id="prompt-input-${q.num}"
+                            value="${escapeHtml(q.prompt)}"
+                            onfocus="setActiveQuestion(${q.num})"
+                            oninput="updateQuestion(${idx}, 'prompt', this.value)"
+                            onkeydown="handleInputKeydown(event, ${q.num}, 'prompt')"
+                            placeholder="${isWriting ? '出題(ひらがな)' : '出題(漢字)'}"
+                            class="flex-1 min-w-0 text-xs px-2 py-1 border border-slate-300 rounded focus:outline-none focus:border-indigo-500 bg-white">
+                        <span class="text-slate-300 text-xs">→</span>
+                        <input type="text"
+                            id="answer-input-${q.num}"
+                            value="${escapeHtml(q.answer)}"
+                            onfocus="setActiveQuestion(${q.num})"
+                            oninput="updateQuestion(${idx}, 'answer', this.value)"
+                            onkeydown="handleInputKeydown(event, ${q.num}, 'answer')"
+                            placeholder="${isWriting ? '答え(漢字)' : '答え(よみ)'}"
+                            class="w-28 text-xs px-2 py-1 border border-slate-300 rounded focus:outline-none focus:border-rose-500 bg-rose-50/40 text-rose-700 font-bold">
+                    `;
+                    container.appendChild(row);
+                } else {
+                    // 【6問表示モード（スクロール不要）】1画面にゆったり6問表示
+                    const row = document.createElement('div');
+                    row.id = `input-card-${q.num}`;
+                    row.className = `p-2.5 rounded-xl border transition-all bg-white shadow-2xs ${
+                        isActive
+                            ? 'border-blue-500 ring-2 ring-blue-100'
+                            : (isWriting ? 'border-slate-200 hover:border-indigo-300' : 'border-slate-200 hover:border-amber-300')
+                    }`;
+
+                    const badgeColor = isWriting ? 'bg-indigo-600 text-white' : 'bg-amber-600 text-white';
+                    const promptPlaceholder = isWriting ? '例：にほんご' : '例：日本語';
+                    const answerPlaceholder = isWriting ? '例：日本語' : '例：にほんご';
+
+                    row.innerHTML = `
+                        <div class="flex items-center gap-2">
+                            <span class="inline-flex items-center justify-center w-8 h-8 rounded-lg text-sm font-bold shrink-0 ${badgeColor}">${q.num}</span>
+                            <div class="flex-1 grid grid-cols-12 gap-2 items-center">
+                                <div class="col-span-6">
+                                    <label class="block text-[10px] font-bold text-slate-500 mb-0.5">
+                                        ① プリントに出す文字（${isWriting ? 'ひらがな' : '漢字'}）
+                                    </label>
+                                    <input type="text"
+                                        id="prompt-input-${q.num}"
+                                        value="${escapeHtml(q.prompt)}"
+                                        onfocus="setActiveQuestion(${q.num})"
+                                        oninput="updateQuestion(${idx}, 'prompt', this.value)"
+                                        onkeydown="handleInputKeydown(event, ${q.num}, 'prompt')"
+                                        placeholder="${promptPlaceholder}"
+                                        class="w-full text-sm px-2.5 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white font-medium">
+                                </div>
+                                <div class="col-span-1 text-center text-slate-400 font-bold pt-3">→</div>
+                                <div class="col-span-5">
+                                    <label class="block text-[10px] font-bold text-rose-600 mb-0.5">
+                                        ② 模範解答（${isWriting ? '漢字' : '読み'}）
+                                    </label>
+                                    <input type="text"
+                                        id="answer-input-${q.num}"
+                                        value="${escapeHtml(q.answer)}"
+                                        onfocus="setActiveQuestion(${q.num})"
+                                        oninput="updateQuestion(${idx}, 'answer', this.value)"
+                                        onkeydown="handleInputKeydown(event, ${q.num}, 'answer')"
+                                        placeholder="${answerPlaceholder}"
+                                        class="w-full text-sm px-2.5 py-1.5 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-500 bg-rose-50/40 text-rose-700 font-bold">
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                    container.appendChild(row);
+                }
+            });
+
+            lucide.createIcons();
+        }
+
+        // タブやフッターのUI状態更新
+        function updateGroupTabsUI() {
+            const footer = document.getElementById('groupNavFooter');
+            const compactBtn = document.getElementById('compactModeBtn');
+
+            if (isCompactMode) {
+                footer.classList.add('hidden');
+                compactBtn.textContent = '1列（6問ずつ）表示に戻す';
+            } else {
+                footer.classList.remove('hidden');
+                compactBtn.textContent = '全36問をコンパクト一覧で表示';
+            }
+
+            for (let g = 0; g < 6; g++) {
+                const btn = document.getElementById(`grp-${g}`);
+                if (!btn) continue;
+                const isSelected = !isCompactMode && currentGroup === g;
+                const isWritingGrp = g < 4;
+                if (isSelected) {
+                    btn.className = isWritingGrp
+                        ? 'py-1.5 rounded-md bg-indigo-600 text-white shadow-sm transition cursor-pointer leading-tight'
+                        : 'py-1.5 rounded-md bg-amber-600 text-white shadow-sm transition cursor-pointer leading-tight';
+                } else {
+                    btn.className = 'py-1.5 rounded-md bg-white text-slate-700 hover:bg-slate-50 transition cursor-pointer leading-tight opacity-85';
+                }
+            }
+
+            const startNum = currentGroup * 6 + 1;
+            const endNum = currentGroup * 6 + 6;
+            const typeText = currentGroup < 4 ? `漢字の書き・${currentGroup + 1}列目` : `漢字の読み・${currentGroup - 3}列目`;
+            document.getElementById('groupIndicatorText').textContent = `${startNum}〜${endNum}問目（${typeText}）`;
+            document.getElementById('prevGroupBtn').disabled = currentGroup === 0;
+            document.getElementById('nextGroupBtn').disabled = currentGroup === 5;
+        }
+
+        // 列グループ切り替え
+        function selectGroup(groupIdx, focusFirst = true) {
+            isCompactMode = false;
+            currentGroup = Math.max(0, Math.min(5, groupIdx));
+            const firstQ = currentGroup * 6 + 1;
+            activeQuestionNum = firstQ;
+            renderInputs();
+            renderPreview();
+            if (focusFirst) {
+                setTimeout(() => {
+                    const el = document.getElementById(`prompt-input-${firstQ}`);
+                    if (el) el.focus();
+                }, 20);
+            }
+        }
+
+        function prevGroup() {
+            if (currentGroup > 0) selectGroup(currentGroup - 1);
+        }
+
+        function nextGroup() {
+            if (currentGroup < 5) selectGroup(currentGroup + 1);
+        }
+
+        function toggleCompactMode() {
+            isCompactMode = !isCompactMode;
+            renderInputs();
+        }
+
+        // 右側A4プレビューの描画（添付画像と同じ右から左への縦書き配置）
+        function renderPreview() {
+            const grid = document.getElementById('questionsGrid');
+            const data = getCurrentData();
+            document.getElementById('sheetTitleBox').textContent = data.title || '　';
+
+            grid.innerHTML = '';
+
+            // CSS Gridは左から右(col 0..5)、上から下(row 0..5)の順にセルを配置する。
+            // 添付画像では一番右の列(col 5)が 1〜6、その左(col 4)が 7〜12 ... 一番左(col 0)が 31〜36。
+            // よって、gridの (row, col) に対応する問題番号 qNum は:
+            // qNum = (5 - col) * 6 + (row + 1)
+            for (let row = 0; row < 6; row++) {
+                for (let col = 0; col < 6; col++) {
+                    const qNum = (5 - col) * 6 + (row + 1);
+                    const qObj = data.questions[qNum - 1];
+                    const isReading = qNum >= 25;
+                    const isActive = qNum === activeQuestionNum;
+
+                    const cell = document.createElement('div');
+                    cell.id = `preview-cell-${qNum}`;
+                    cell.className = `q-cell ${isReading ? 'reading-type' : ''} ${isActive ? 'active-cell' : ''}`;
+                    cell.title = `クリックして第${qNum}問を編集`;
+                    cell.onclick = () => focusQuestionFromPreview(qNum);
+
+                    // 問題番号（全角または等幅風スペース）
+                    const displayNum = formatQuestionNumber(qNum);
+
+                    // 解答表示オーバーレイ
+                    const answerHtml = (showAnswers && qObj.answer)
+                        ? `<div class="answer-overlay">${escapeHtml(qObj.answer)}</div>`
+                        : '';
+
+                    cell.innerHTML = `
+                        <div class="q-header">${displayNum}</div>
+                        <div class="q-body">
+                            <div class="q-prompt-area">${escapeHtml(qObj.prompt)}</div>
+                            <div class="q-answer-area">${answerHtml}</div>
+                        </div>
+                    `;
+                    grid.appendChild(cell);
+                }
+            }
+        }
+
+        // 問題番号の表示整形（1〜9は全角、10〜36は半角スペース入りで添付画像の雰囲気を再現）
+        function formatQuestionNumber(num) {
+            if (num < 10) {
+                return toFullWidthNum(num);
+            }
+            return String(num).split('').join(' ');
+        }
+
+        // HTMLエスケープ
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
+        }
+
+        // 入力値の更新とプレビュー即時反映
+        function updateQuestion(index, field, value) {
+            const data = getCurrentData();
+            data.questions[index][field] = value;
+            renderPreview();
+        }
+
+        // アクティブな問題番号のハイライト同期
+        function setActiveQuestion(qNum) {
+            if (activeQuestionNum === qNum) return;
+            activeQuestionNum = qNum;
+            document.querySelectorAll('.q-cell.active-cell').forEach(el => el.classList.remove('active-cell'));
+            const targetCell = document.getElementById(`preview-cell-${qNum}`);
+            if (targetCell) targetCell.classList.add('active-cell');
+        }
+
+        // プレビュー側のマスをクリックした時に該当列タブへ切り替えてフォーカス
+        function focusQuestionFromPreview(qNum) {
+            activeQuestionNum = qNum;
+            const targetGroup = Math.floor((qNum - 1) / 6);
+            if (!isCompactMode && currentGroup !== targetGroup) {
+                currentGroup = targetGroup;
+            }
+            renderInputs();
+            renderPreview();
+
+            const promptInput = document.getElementById(`prompt-input-${qNum}`);
+            if (promptInput) {
+                promptInput.focus();
+                promptInput.select();
+            }
+        }
+
+        // Enterキーで次の入力欄・次の列ページへ自動移動
+        function handleInputKeydown(event, qNum, field) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                if (field === 'prompt') {
+                    const ansEl = document.getElementById(`answer-input-${qNum}`);
+                    if (ansEl) ansEl.focus();
+                } else if (field === 'answer' && qNum < TOTAL_QUESTIONS) {
+                    const nextNum = qNum + 1;
+                    activeQuestionNum = nextNum;
+                    const nextGroupIdx = Math.floor((nextNum - 1) / 6);
+
+                    if (!isCompactMode && nextGroupIdx !== currentGroup) {
+                        currentGroup = nextGroupIdx;
+                        renderInputs();
+                        renderPreview();
+                    } else {
+                        setActiveQuestion(nextNum);
+                    }
+
+                    setTimeout(() => {
+                        const nextPromptEl = document.getElementById(`prompt-input-${nextNum}`);
+                        if (nextPromptEl) nextPromptEl.focus();
+                    }, 10);
+                }
+            }
+        }
+
+        // プリントタイトル直接編集
+        document.getElementById('customTitleInput').addEventListener('input', (e) => {
+            const data = getCurrentData();
+            data.title = e.target.value;
+            document.getElementById('sheetTitleBox').textContent = data.title || '　';
+        });
+
+        // 学年・学期切り替えイベント
+        document.getElementById('gradeSelect').addEventListener('change', (e) => {
+            currentGrade = e.target.value;
+            onGradeOrTermChanged();
+        });
+
+        document.getElementById('termSelect').addEventListener('change', (e) => {
+            currentTerm = e.target.value;
+            onGradeOrTermChanged();
+        });
+
+        function onGradeOrTermChanged() {
+            renderInputs();
+            renderPreview();
+            updateModalLabels();
+            showToast(`${currentGrade}年 ${currentTerm}学期 に切り替えました`);
+        }
+
+        function updateModalLabels() {
+            document.querySelectorAll('.current-gt-label').forEach(el => {
+                el.textContent = `${currentGrade}年 ${currentTerm}学期`;
+            });
+        }
+
+        // 模範解答の表示・非表示切替
+        function toggleAnswers() {
+            showAnswers = !showAnswers;
+            const btn = document.getElementById('toggleAnswerBtn');
+            const text = document.getElementById('toggleAnswerText');
+            if (showAnswers) {
+                btn.classList.remove('bg-amber-500', 'hover:bg-amber-600');
+                btn.classList.add('bg-rose-600', 'hover:bg-rose-700');
+                text.textContent = '模範解答を隠す';
+            } else {
+                btn.classList.remove('bg-rose-600', 'hover:bg-rose-700');
+                btn.classList.add('bg-amber-500', 'hover:bg-amber-600');
+                text.textContent = '模範解答を表示';
+            }
+            renderPreview();
+        }
+
+        // ズーム倍率変更
+        function setZoom(scale) {
+            currentZoom = scale;
+            const wrapper = document.getElementById('previewZoomWrapper');
+            wrapper.style.transform = `scale(${scale})`;
+            wrapper.style.marginBottom = `${(scale - 1) * 297}mm`;
+        }
+
+        // PDF保存 / 印刷実行
+        function downloadPDF() {
+            const wrapper = document.getElementById('previewZoomWrapper');
+            const prevTransform = wrapper.style.transform;
+            const prevMargin = wrapper.style.marginBottom;
+            wrapper.style.transform = 'scale(1)';
+            wrapper.style.marginBottom = '0';
+
+            showToast('印刷ダイアログを開きます。「PDFに保存」を選択してください。');
+            setTimeout(() => {
+                window.print();
+                wrapper.style.transform = prevTransform;
+                wrapper.style.marginBottom = prevMargin;
+            }, 200);
+        }
+
+        // ==========================================
+        // Googleスプレッドシート連携 (GAS WebApp & CSV)
+        // ==========================================
+        function openSheetsModal() {
+            updateModalLabels();
+            document.getElementById('gasUrlInput').value = gasWebAppUrl;
+            const modal = document.getElementById('sheetsModal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            if (gasWebAppUrl) {
+                fetchSavedListFromSheets();
+            }
+        }
+
+        function closeSheetsModal() {
+            const modal = document.getElementById('sheetsModal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function toggleGasCode() {
+            document.getElementById('gasCodeBox').classList.toggle('hidden');
+        }
+
+        function copyGasCode() {
+            const text = document.getElementById('gasCodeText').innerText;
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            showToast('GASスクリプトコードをコピーしました！');
+        }
+
+        function saveGasUrl() {
+            const val = document.getElementById('gasUrlInput').value.trim();
+            if (val && !val.startsWith('https://script.google.com/')) {
+                showToast('Google Apps Scriptの正しいURL（https://script.google.com/...）を入力してください', 'error');
+                return;
+            }
+            gasWebAppUrl = val;
+            try {
+                const url = new URL(window.location.href);
+                if (val) {
+                    url.searchParams.set('gas', val);
+                } else {
+                    url.searchParams.delete('gas');
+                }
+                window.history.replaceState({}, '', url);
+            } catch (e) {
+                // iframe環境などでhistory操作が制限される場合は無視
+            }
+            showToast('ウェブアプリURLをセットしました');
+            if (gasWebAppUrl) {
+                fetchSavedListFromSheets();
+            }
+        }
+
+        async function backupToSheets() {
+            const inputUrl = document.getElementById('gasUrlInput').value.trim();
+            if (inputUrl) gasWebAppUrl = inputUrl;
+
+            if (!gasWebAppUrl) {
+                showToast('先に「1. ウェブアプリURL」を入力して保存してください', 'error');
+                return;
+            }
+            const btn = document.getElementById('btnBackupSheets');
+            const origHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span>スプレッドシートへ保存中...</span>';
+
+            try {
+                const data = getCurrentData();
+                const payload = {
+                    grade: currentGrade,
+                    term: currentTerm,
+                    title: data.title,
+                    questions: data.questions
+                };
+
+                const res = await fetch(gasWebAppUrl, {
+                    method: 'POST',
+                    redirect: 'follow',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
+                });
+
+                const resultText = await res.text();
+                let json = null;
+                try { json = JSON.parse(resultText); } catch (e) {}
+
+                if (json && json.status === 'error') {
+                    throw new Error(json.message);
+                }
+
+                showToast(`スプレッドシートへ「${currentGrade}年 ${currentTerm}学期」を保存しました！`);
+                fetchSavedListFromSheets();
+            } catch (err) {
+                console.error(err);
+                showToast('保存に失敗しました。GASのURLとデプロイ権限（「全員」）を確認してください。', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+                lucide.createIcons();
+            }
+        }
+
+        async function restoreFromSheets(targetGrade = null, targetTerm = null) {
+            const inputUrl = document.getElementById('gasUrlInput').value.trim();
+            if (inputUrl) gasWebAppUrl = inputUrl;
+
+            if (!gasWebAppUrl) {
+                showToast('先に「1. ウェブアプリURL」を入力して保存してください', 'error');
+                return;
+            }
+
+            const g = targetGrade || currentGrade;
+            const t = targetTerm || currentTerm;
+
+            const btn = document.getElementById('btnRestoreSheets');
+            const origHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span>呼び出し中...</span>';
+
+            try {
+                const url = `${gasWebAppUrl}?action=load&grade=${encodeURIComponent(g)}&term=${encodeURIComponent(t)}`;
+                const res = await fetch(url, { method: 'GET', redirect: 'follow' });
+                const json = await res.json();
+
+                if (json.status === 'success' && Array.isArray(json.questions)) {
+                    currentGrade = String(g);
+                    currentTerm = String(t);
+                    document.getElementById('gradeSelect').value = currentGrade;
+                    document.getElementById('termSelect').value = currentTerm;
+
+                    store[`${currentGrade}_${currentTerm}`] = {
+                        title: json.title || `${toFullWidthNum(currentGrade)}年　国語期末対策プリント`,
+                        questions: json.questions
+                    };
+                    updateModalLabels();
+                    renderInputs();
+                    renderPreview();
+                    closeSheetsModal();
+                    showToast(`スプレッドシートから「${currentGrade}年 ${currentTerm}学期」を呼び出しました！`);
+                } else {
+                    showToast(`スプレッドシートに「${g}年 ${t}学期」のデータが見つかりませんでした`, 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('呼び出しに失敗しました。GASのデプロイ設定（全員にアクセス許可）を確認してください。', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = origHtml;
+                lucide.createIcons();
+            }
+        }
+
+        // スプレッドシート内の保存済みデータ一覧を取得して表示
+        async function fetchSavedListFromSheets() {
+            const inputUrl = document.getElementById('gasUrlInput').value.trim();
+            if (inputUrl) gasWebAppUrl = inputUrl;
+            if (!gasWebAppUrl) return;
+
+            const container = document.getElementById('savedSheetsListContainer');
+            container.innerHTML = '<div class="text-center py-2 text-slate-500">スプレッドシートから一覧を取得中...</div>';
+
+            try {
+                const url = `${gasWebAppUrl}?action=list`;
+                const res = await fetch(url, { method: 'GET', redirect: 'follow' });
+                const json = await res.json();
+
+                if (json.status === 'success' && Array.isArray(json.list)) {
+                    if (json.list.length === 0) {
+                        container.innerHTML = '<div class="text-center py-2 text-slate-500">まだスプレッドシートに保存されたプリントはありません。</div>';
+                        return;
+                    }
+                    // 学年・学期順にソート
+                    json.list.sort((a, b) => a.key.localeCompare(b.key));
+                    container.innerHTML = '';
+                    json.list.forEach(item => {
+                        const row = document.createElement('div');
+                        row.className = 'flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-slate-200 mb-1.5 last:mb-0 hover:border-emerald-400 transition';
+                        row.innerHTML = `
+                            <div>
+                                <span class="font-bold text-slate-800">${escapeHtml(item.grade)}年 ${escapeHtml(item.term)}学期</span>
+                                <span class="text-slate-600 ml-2">${escapeHtml(item.title)}</span>
+                                ${item.updatedAt ? `<span class="text-[10px] text-slate-400 ml-2">(${escapeHtml(item.updatedAt)})</span>` : ''}
+                            </div>
+                            <button onclick="restoreFromSheets('${escapeHtml(item.grade)}', '${escapeHtml(item.term)}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1 rounded text-[11px] cursor-pointer shrink-0">
+                                呼び出す
+                            </button>
+                        `;
+                        container.appendChild(row);
+                    });
+                } else {
+                    container.innerHTML = '<div class="text-rose-600">一覧の取得に失敗しました。GASコードを最新版に更新して再デプロイしてください。</div>';
+                }
+            } catch (err) {
+                container.innerHTML = '<div class="text-rose-600">通信エラー：URLが正しいか、GASのアクセス権限が「全員」になっているか確認してください。</div>';
+            }
+        }
+
+        // CSVエクスポート（スプレッドシートに直接インポート可能）
+        function exportCSV() {
+            const data = getCurrentData();
+            const rows = [
+                ['問題番号', '種別', '出題文字', '模範解答', '学年', '学期', 'プリント題名']
+            ];
+            data.questions.forEach(q => {
+                rows.push([
+                    q.num,
+                    q.num <= 24 ? '書き' : '読み',
+                    `"${(q.prompt || '').replace(/"/g, '""')}"`,
+                    `"${(q.answer || '').replace(/"/g, '""')}"`,
+                    currentGrade,
+                    currentTerm,
+                    `"${(data.title || '').replace(/"/g, '""')}"`
+                ]);
+            });
+            // Excel・スプレッドシートで文字化けしないようUTF-8 BOM付きで出力
+            const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+            const csvContent = rows.map(r => r.join(',')).join('\r\n');
+            const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `漢字対策プリント_${currentGrade}年${currentTerm}学期.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('スプレッドシート用CSVをダウンロードしました');
+        }
+
+        // CSVインポート
+        function importCSV(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const text = e.target.result;
+                    const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+                    const data = getCurrentData();
+                    // 1行目はヘッダーとしてスキップ
+                    for (let i = 1; i < lines.length && i <= TOTAL_QUESTIONS; i++) {
+                        const cols = parseCSVLine(lines[i]);
+                        if (cols.length >= 4) {
+                            const qIdx = (parseInt(cols[0], 10) || i) - 1;
+                            if (qIdx >= 0 && qIdx < TOTAL_QUESTIONS) {
+                                data.questions[qIdx].prompt = cols[2] || '';
+                                data.questions[qIdx].answer = cols[3] || '';
+                            }
+                            if (i === 1 && cols[6]) {
+                                data.title = cols[6];
+                            }
+                        }
+                    }
+                    renderInputs();
+                    renderPreview();
+                    closeSheetsModal();
+                    showToast('CSVファイルから問題を読み込みました！');
+                } catch (err) {
+                    showToast('CSVファイルの形式が正しくありません', 'error');
+                }
+                event.target.value = '';
+            };
+            reader.readAsText(file, 'UTF-8');
+        }
+
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                const ch = line[i];
+                if (inQuotes) {
+                    if (ch === '"' && line[i + 1] === '"') {
+                        current += '"';
+                        i++;
+                    } else if (ch === '"') {
+                        inQuotes = false;
+                    } else {
+                        current += ch;
+                    }
+                } else {
+                    if (ch === '"') {
+                        inQuotes = true;
+                    } else if (ch === ',') {
+                        result.push(current);
+                        current = '';
+                    } else {
+                        current += ch;
+                    }
+                }
+            }
+            result.push(current);
+            return result;
+        }
+
+        // ==========================================
+        // カスタム通知トースト
+        // ==========================================
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            const bg = type === 'error' ? 'bg-rose-600' : 'bg-slate-800';
+            toast.className = `${bg} text-white text-xs font-medium px-4 py-3 rounded-xl shadow-lg flex items-center gap-2 transition-all duration-300 transform translate-y-0 opacity-100`;
+            toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        }
+
+        // ==========================================
+        // 初期化実行
+        // ==========================================
+        window.addEventListener('DOMContentLoaded', () => {
+            // URLパラメータに ?gas=... があれば自動セット
+            try {
+                const params = new URLSearchParams(window.location.search);
+                const savedGas = params.get('gas');
+                if (savedGas) {
+                    gasWebAppUrl = savedGas;
+                }
+            } catch (e) {}
+
+            lucide.createIcons();
+            renderInputs();
+            renderPreview();
+            // 画面幅に合わせて初期ズーム自動調整
+            if (window.innerWidth < 1280) {
+                setZoom(0.75);
+            }
+        });
+    </script>
+</body>
+</html>
