@@ -352,6 +352,18 @@
                     <input type="text" id="customTitleInput" class="flex-1 text-sm font-bold text-slate-800 focus:outline-none border-b border-transparent focus:border-indigo-500" placeholder="例：３年　国語期末対策プリント">
                 </div>
 
+                <!-- 保存一覧（スプレッドシートから直接呼び出し） -->
+                <div class="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-300 shadow-2xs">
+                    <label class="text-xs font-bold text-slate-600 whitespace-nowrap">保存一覧:</label>
+                    <select id="savedListSelect" class="flex-1 min-w-0 text-xs font-bold text-slate-700 focus:outline-none bg-transparent cursor-pointer">
+                        <option value="">（スプレッドシート連携でURLを設定すると表示されます）</option>
+                    </select>
+                    <button onclick="loadFromSavedList()" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1 rounded text-[11px] cursor-pointer shrink-0">呼び出す</button>
+                    <button onclick="refreshSavedListSelect()" title="一覧を更新" class="bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold px-2 py-1 rounded text-[11px] cursor-pointer shrink-0 flex items-center">
+                        <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+                    </button>
+                </div>
+
                 <!-- 列ごと（6問ずつ）切り替えナビゲーション（スクロール不要） -->
                 <div class="space-y-1">
                     <div class="flex items-center justify-between text-[11px] font-bold text-slate-500 px-0.5">
@@ -1215,6 +1227,7 @@ function getOrCreateSheet() {
             showToast('ウェブアプリURLをセットしました');
             if (gasWebAppUrl) {
                 fetchSavedListFromSheets();
+                refreshSavedListSelect();
             }
         }
 
@@ -1257,6 +1270,7 @@ function getOrCreateSheet() {
 
                 showToast(`スプレッドシートへ「${currentGrade}年 ${currentTerm}学期」を保存しました！`);
                 fetchSavedListFromSheets();
+                refreshSavedListSelect();
             } catch (err) {
                 console.error(err);
                 showToast('保存に失敗しました。GASのURLとデプロイ権限（「全員」）を確認してください。', 'error');
@@ -1372,6 +1386,7 @@ function getOrCreateSheet() {
                 }
                 showToast(`セット「${name}」を保存しました（${grades.join('・')}年生）`);
                 fetchSavedListFromSheets();
+                refreshSavedListSelect();
             } catch (err) {
                 console.error(err);
                 showToast('セットの保存に失敗しました。GASコードを最新版に更新して再デプロイしたか、URLと権限（「全員」）を確認してください。', 'error');
@@ -1413,6 +1428,63 @@ function getOrCreateSheet() {
             } catch (err) {
                 console.error(err);
                 showToast('セットの呼び出しに失敗しました。GASのデプロイ設定（全員にアクセス許可）を確認してください。', 'error');
+            }
+        }
+
+        // エディタ上部の「保存一覧」プルダウンをスプレッドシートから更新
+        async function refreshSavedListSelect() {
+            const sel = document.getElementById('savedListSelect');
+            if (!sel) return;
+            const inputEl = document.getElementById('gasUrlInput');
+            if (inputEl && inputEl.value.trim()) gasWebAppUrl = inputEl.value.trim();
+            if (!gasWebAppUrl) {
+                sel.innerHTML = '<option value="">（スプレッドシート連携でURLを設定すると表示されます）</option>';
+                return;
+            }
+            sel.innerHTML = '<option value="">（読み込み中…）</option>';
+            try {
+                const res = await fetch(`${gasWebAppUrl}?action=list`, { method: 'GET', redirect: 'follow' });
+                const json = await res.json();
+                if (json.status === 'success' && Array.isArray(json.list)) {
+                    if (json.list.length === 0) {
+                        sel.innerHTML = '<option value="">（保存済みのプリントはありません）</option>';
+                        return;
+                    }
+                    const sets = json.list.filter(i => i.kind === 'set');
+                    const singles = json.list.filter(i => i.kind !== 'set').sort((a, b) => a.key.localeCompare(b.key));
+                    sel.innerHTML = '';
+                    sets.forEach(item => {
+                        const opt = document.createElement('option');
+                        opt.value = 'set:' + item.name;
+                        opt.textContent = `📦 セット「${item.name}」`;
+                        sel.appendChild(opt);
+                    });
+                    singles.forEach(item => {
+                        const opt = document.createElement('option');
+                        opt.value = `single:${item.grade}:${item.term}`;
+                        opt.textContent = `${item.grade}年 ${item.term}学期：${item.title || ''}`;
+                        sel.appendChild(opt);
+                    });
+                } else {
+                    sel.innerHTML = '<option value="">（一覧の取得に失敗しました）</option>';
+                }
+            } catch (e) {
+                sel.innerHTML = '<option value="">（一覧の取得に失敗しました）</option>';
+            }
+        }
+
+        // 「保存一覧」で選んだものを呼び出す
+        function loadFromSavedList() {
+            const sel = document.getElementById('savedListSelect');
+            if (!sel || !sel.value) {
+                showToast('先に保存一覧から呼び出すものを選んでください', 'error');
+                return;
+            }
+            if (sel.value.startsWith('set:')) {
+                loadNamedSet(sel.value.slice(4));
+            } else if (sel.value.startsWith('single:')) {
+                const parts = sel.value.split(':');
+                restoreFromSheets(parts[1], parts[2]);
             }
         }
 
@@ -1606,6 +1678,7 @@ function getOrCreateSheet() {
             lucide.createIcons();
             renderInputs();
             renderPreview();
+            refreshSavedListSelect();
             // 画面幅に合わせて初期ズーム自動調整
             if (window.innerWidth < 1280) {
                 setZoom(0.75);
