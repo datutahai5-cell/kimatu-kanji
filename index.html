@@ -364,6 +364,11 @@
                     </button>
                 </div>
 
+                <!-- スプレッドシートへ保存ボタン（新しく作った・変更したときだけ表示） -->
+                <button id="btnHomeSave" onclick="backupToSheets()" style="display:none" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-lg text-sm shadow transition items-center justify-center gap-1.5 cursor-pointer">
+                    <i data-lucide="cloud-upload" class="w-4 h-4"></i> スプレッドシートに保存（<span class="current-gt-label">3年 2学期</span>）
+                </button>
+
                 <!-- 列ごと（6問ずつ）切り替えナビゲーション（スクロール不要） -->
                 <div class="space-y-1">
                     <div class="flex items-center justify-between text-[11px] font-bold text-slate-500 px-0.5">
@@ -459,7 +464,7 @@
             <div class="px-6 py-4 bg-emerald-700 text-white flex items-center justify-between">
                 <div class="flex items-center gap-2">
                     <i data-lucide="sheet" class="w-5 h-5"></i>
-                    <h2 class="font-bold text-lg">Googleスプレッドシート バックアップ・読込</h2>
+                    <h2 class="font-bold text-lg">Googleスプレッドシート連携（URL設定）</h2>
                 </div>
                 <button onclick="closeSheetsModal()" class="text-emerald-100 hover:text-white p-1 rounded-lg cursor-pointer">
                     <i data-lucide="x" class="w-5 h-5"></i>
@@ -607,101 +612,6 @@ function getOrCreateSheet() {
                     </div>
                 </div>
 
-                <!-- ステップ2: バックアップと読み込み実行 -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <!-- 保存 -->
-                    <div class="border border-slate-200 rounded-xl p-4 flex flex-col justify-between gap-3 bg-slate-50">
-                        <div>
-                            <h4 class="font-bold text-slate-800 flex items-center gap-1.5 mb-1">
-                                <i data-lucide="cloud-upload" class="w-4 h-4 text-indigo-600"></i>
-                                スプレッドシートへ保存
-                            </h4>
-                            <p class="text-xs text-slate-600">
-                                現在編集中の「<span class="font-bold text-indigo-700 current-gt-label">3年 2学期</span>」の問題36問をスプレッドシートに保存（上書き）します。
-                            </p>
-                        </div>
-                        <button onclick="backupToSheets()" id="btnBackupSheets" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2.5 rounded-lg text-xs shadow transition flex items-center justify-center gap-1.5 cursor-pointer">
-                            <i data-lucide="upload" class="w-4 h-4"></i> スプレッドシートに保存する
-                        </button>
-                    </div>
-
-                    <!-- 読込 -->
-                    <div class="border border-slate-200 rounded-xl p-4 flex flex-col justify-between gap-3 bg-slate-50">
-                        <div>
-                            <h4 class="font-bold text-slate-800 flex items-center gap-1.5 mb-1">
-                                <i data-lucide="cloud-download" class="w-4 h-4 text-emerald-600"></i>
-                                スプレッドシートから呼び出し
-                            </h4>
-                            <p class="text-xs text-slate-600">
-                                保存済みの「<span class="font-bold text-emerald-700 current-gt-label">3年 2学期</span>」のデータをスプレッドシートから呼び出します。
-                            </p>
-                        </div>
-                        <button onclick="restoreFromSheets()" id="btnRestoreSheets" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-2.5 rounded-lg text-xs shadow transition flex items-center justify-center gap-1.5 cursor-pointer">
-                            <i data-lucide="download" class="w-4 h-4"></i> この学年・学期を呼び出す
-                        </button>
-                    </div>
-                </div>
-
-                <!-- 名前をつけて全て保存（セット保存） -->
-                <div class="border-2 border-indigo-200 rounded-xl p-4 bg-indigo-50/60 space-y-3">
-                    <div>
-                        <h4 class="font-bold text-slate-800 flex items-center gap-1.5 mb-1">
-                            <i data-lucide="package" class="w-4 h-4 text-indigo-600"></i>
-                            名前をつけて全て保存（セット保存）
-                        </h4>
-                        <p class="text-xs text-slate-600">
-                            名前をつけて、選んだ学年（1〜6年）の全学期分を1つにまとめて、ステップ1の保存先スプレッドシートに保存します。呼び出すときは下の一覧でセット名を選ぶだけです。
-                        </p>
-                    </div>
-                    <div class="flex flex-col sm:flex-row gap-2">
-                        <input type="text" id="setNameInput" placeholder="セット名（例：令和8年度 2学期 期末対策）" class="flex-1 px-3 py-2 border border-indigo-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-white">
-                        <button onclick="saveNamedSet()" id="btnSaveNamedSet" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 py-2 rounded-lg text-xs shadow transition flex items-center justify-center gap-1.5 cursor-pointer shrink-0">
-                            <i data-lucide="save" class="w-4 h-4"></i> セットを保存する
-                        </button>
-                    </div>
-                    <div class="flex items-center flex-wrap gap-x-3 gap-y-1 text-xs font-bold text-slate-700">
-                        <span>保存する学年:</span>
-                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" class="set-grade-check" value="1" checked> 1年</label>
-                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" class="set-grade-check" value="2" checked> 2年</label>
-                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" class="set-grade-check" value="3" checked> 3年</label>
-                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" class="set-grade-check" value="4" checked> 4年</label>
-                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" class="set-grade-check" value="5" checked> 5年</label>
-                        <label class="flex items-center gap-1 cursor-pointer"><input type="checkbox" class="set-grade-check" value="6" checked> 6年</label>
-                    </div>
-                </div>
-
-                <!-- ステップ3: スプレッドシート内の保存済み一覧から直接呼び出し -->
-                <div class="border border-slate-200 rounded-xl p-4 bg-white space-y-2.5">
-                    <div class="flex items-center justify-between">
-                        <h4 class="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                            <i data-lucide="list-checks" class="w-4 h-4 text-indigo-600"></i>
-                            スプレッドシートに保存済みのプリント一覧
-                        </h4>
-                        <button onclick="fetchSavedListFromSheets()" id="btnRefreshList" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold px-2.5 py-1 rounded-lg flex items-center gap-1 cursor-pointer">
-                            <i data-lucide="refresh-cw" class="w-3 h-3"></i> 一覧を更新
-                        </button>
-                    </div>
-                    <div id="savedSheetsListContainer" class="text-xs text-slate-500 bg-slate-50 rounded-lg p-3 border border-slate-200/80 max-h-40 overflow-y-auto">
-                        URLを保存して「一覧を更新」を押すと、スプレッドシート内の保存済みプリントが表示されます。
-                    </div>
-                </div>
-
-                <!-- 代替手段：CSV ファイルでのバックアップ -->
-                <div class="border-t border-slate-200 pt-4 space-y-2">
-                    <h4 class="font-bold text-slate-700 text-xs flex items-center gap-1.5">
-                        <i data-lucide="file-spreadsheet" class="w-4 h-4 text-slate-500"></i>
-                        URL設定不要の代替手段（CSV形式でスプレッドシートに手動保存・読込）
-                    </h4>
-                    <div class="flex flex-wrap gap-2">
-                        <button onclick="exportCSV()" class="bg-slate-700 hover:bg-slate-800 text-white text-xs font-medium px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition cursor-pointer">
-                            <i data-lucide="file-down" class="w-4 h-4"></i> CSVをダウンロード（スプレッドシート用）
-                        </button>
-                        <label class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 text-xs font-medium px-3.5 py-2 rounded-lg flex items-center gap-1.5 transition cursor-pointer">
-                            <i data-lucide="file-up" class="w-4 h-4"></i> CSVファイルから読み込み
-                            <input type="file" id="csvFileInput" accept=".csv" class="hidden" onchange="importCSV(event)">
-                        </label>
-                    </div>
-                </div>
             </div>
         </div>
     </div>
@@ -1024,6 +934,19 @@ function getOrCreateSheet() {
         }
 
         // 入力値の更新とプレビュー即時反映
+        // 未保存の変更があるかどうか（保存ボタンの表示制御）
+        let isDirty = false;
+        function markDirty() {
+            isDirty = true;
+            const b = document.getElementById('btnHomeSave');
+            if (b) b.style.display = 'flex';
+        }
+        function clearDirty() {
+            isDirty = false;
+            const b = document.getElementById('btnHomeSave');
+            if (b) b.style.display = 'none';
+        }
+
         // 漢字の書き（1〜24問）の出題・答えを一括クリア
         function clearWritingQuestions() {
             if (!confirm('漢字の書き（1〜24問）の出題と答えをすべて消します。よろしいですか？')) return;
@@ -1034,6 +957,7 @@ function getOrCreateSheet() {
                     q.answer = '';
                 }
             });
+            markDirty();
             renderInputs();
             renderPreview();
             if (typeof lucide !== 'undefined') lucide.createIcons();
@@ -1043,6 +967,7 @@ function getOrCreateSheet() {
             const data = getCurrentData();
             data.questions[index][field] = value;
             renderPreview();
+            markDirty();
         }
 
         // アクティブな問題番号のハイライト同期
@@ -1104,6 +1029,7 @@ function getOrCreateSheet() {
             const data = getCurrentData();
             data.title = e.target.value;
             document.getElementById('sheetTitleBox').textContent = data.title || '　';
+            markDirty();
         });
 
         // 学年・学期切り替えイベント
@@ -1118,6 +1044,7 @@ function getOrCreateSheet() {
         });
 
         function onGradeOrTermChanged() {
+            clearDirty();
             renderInputs();
             renderPreview();
             updateModalLabels();
@@ -1180,9 +1107,6 @@ function getOrCreateSheet() {
             const modal = document.getElementById('sheetsModal');
             modal.classList.remove('hidden');
             modal.classList.add('flex');
-            if (gasWebAppUrl) {
-                fetchSavedListFromSheets();
-            }
         }
 
         function closeSheetsModal() {
@@ -1226,23 +1150,24 @@ function getOrCreateSheet() {
             }
             showToast('ウェブアプリURLをセットしました');
             if (gasWebAppUrl) {
-                fetchSavedListFromSheets();
                 refreshSavedListSelect();
             }
         }
 
         async function backupToSheets() {
-            const inputUrl = document.getElementById('gasUrlInput').value.trim();
-            if (inputUrl) gasWebAppUrl = inputUrl;
+            const inputEl = document.getElementById('gasUrlInput');
+            if (inputEl && inputEl.value.trim()) gasWebAppUrl = inputEl.value.trim();
 
             if (!gasWebAppUrl) {
-                showToast('先に「1. ウェブアプリURL」を入力して保存してください', 'error');
+                showToast('先に「スプレッドシート連携」でウェブアプリURLを登録してください', 'error');
                 return;
             }
-            const btn = document.getElementById('btnBackupSheets');
-            const origHtml = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = '<span>スプレッドシートへ保存中...</span>';
+            const btn = document.getElementById('btnHomeSave');
+            const origHtml = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span>スプレッドシートへ保存中...</span>';
+            }
 
             try {
                 const data = getCurrentData();
@@ -1269,15 +1194,17 @@ function getOrCreateSheet() {
                 }
 
                 showToast(`スプレッドシートへ「${currentGrade}年 ${currentTerm}学期」を保存しました！`);
-                fetchSavedListFromSheets();
+                clearDirty();
                 refreshSavedListSelect();
             } catch (err) {
                 console.error(err);
                 showToast('保存に失敗しました。GASのURLとデプロイ権限（「全員」）を確認してください。', 'error');
             } finally {
-                btn.disabled = false;
-                btn.innerHTML = origHtml;
-                lucide.createIcons();
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = origHtml;
+                    lucide.createIcons();
+                }
             }
         }
 
@@ -1294,9 +1221,11 @@ function getOrCreateSheet() {
             const t = targetTerm || currentTerm;
 
             const btn = document.getElementById('btnRestoreSheets');
-            const origHtml = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = '<span>呼び出し中...</span>';
+            const origHtml = btn ? btn.innerHTML : '';
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<span>呼び出し中...</span>';
+            }
 
             try {
                 const url = `${gasWebAppUrl}?action=load&grade=${encodeURIComponent(g)}&term=${encodeURIComponent(t)}`;
@@ -1313,6 +1242,7 @@ function getOrCreateSheet() {
                         title: json.title || `${toFullWidthNum(currentGrade)}年　国語期末対策プリント`,
                         questions: json.questions
                     };
+                    clearDirty();
                     updateModalLabels();
                     renderInputs();
                     renderPreview();
@@ -1325,75 +1255,11 @@ function getOrCreateSheet() {
                 console.error(err);
                 showToast('呼び出しに失敗しました。GASのデプロイ設定（全員にアクセス許可）を確認してください。', 'error');
             } finally {
-                btn.disabled = false;
-                btn.innerHTML = origHtml;
-                lucide.createIcons();
-            }
-        }
-
-        // 名前付きセットをスプレッドシートへ保存（選んだ学年の全学期分をまとめて）
-        async function saveNamedSet() {
-            const inputUrl = document.getElementById('gasUrlInput').value.trim();
-            if (inputUrl) gasWebAppUrl = inputUrl;
-            if (!gasWebAppUrl) {
-                showToast('先に「1. ウェブアプリURL」を入力して保存してください', 'error');
-                return;
-            }
-            const name = document.getElementById('setNameInput').value.trim();
-            if (!name) {
-                showToast('セット名を入力してください', 'error');
-                return;
-            }
-            const grades = Array.from(document.querySelectorAll('.set-grade-check:checked')).map(cb => cb.value);
-            if (grades.length === 0) {
-                showToast('保存する学年を1つ以上選んでください', 'error');
-                return;
-            }
-            const btn = document.getElementById('btnSaveNamedSet');
-            const origHtml = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = '<span>セットを保存中...</span>';
-            try {
-                const data = {};
-                grades.forEach(g => {
-                    ['1', '2', '3'].forEach(t => {
-                        const key = `${g}_${t}`;
-                        data[key] = store[key] || createEmptyDataset(g, t);
-                    });
-                });
-                const res = await fetch(gasWebAppUrl, {
-                    method: 'POST',
-                    redirect: 'follow',
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-                    body: JSON.stringify({ type: 'set', name: name, data: data })
-                });
-                const resultText = await res.text();
-                let json = null;
-                try { json = JSON.parse(resultText); } catch (e) {}
-                if (json && json.status === 'error') throw new Error(json.message);
-                if (!json || json.status !== 'saved') throw new Error('unexpected response');
-                // 旧版GASだとセットとして保存されないため、一覧で実際に保存されたか確認する
-                let verified = false;
-                try {
-                    const listRes = await fetch(`${gasWebAppUrl}?action=list`, { method: 'GET', redirect: 'follow' });
-                    const listJson = await listRes.json();
-                    if (listJson && Array.isArray(listJson.list)) {
-                        verified = listJson.list.some(i => i.kind === 'set' && i.name === name);
-                    }
-                } catch (e) {}
-                if (!verified) {
-                    throw new Error('set not found in list');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = origHtml;
+                    lucide.createIcons();
                 }
-                showToast(`セット「${name}」を保存しました（${grades.join('・')}年生）`);
-                fetchSavedListFromSheets();
-                refreshSavedListSelect();
-            } catch (err) {
-                console.error(err);
-                showToast('セットの保存に失敗しました。GASコードを最新版に更新して再デプロイしたか、URLと権限（「全員」）を確認してください。', 'error');
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = origHtml;
-                lucide.createIcons();
             }
         }
 
@@ -1417,6 +1283,7 @@ function getOrCreateSheet() {
                             count++;
                         }
                     });
+                    clearDirty();
                     updateModalLabels();
                     renderInputs();
                     renderPreview();
@@ -1488,133 +1355,8 @@ function getOrCreateSheet() {
             }
         }
 
-        // スプレッドシート内の保存済みデータ一覧を取得して表示
-        async function fetchSavedListFromSheets() {
-            const inputUrl = document.getElementById('gasUrlInput').value.trim();
-            if (inputUrl) gasWebAppUrl = inputUrl;
-            if (!gasWebAppUrl) return;
 
-            const container = document.getElementById('savedSheetsListContainer');
-            container.innerHTML = '<div class="text-center py-2 text-slate-500">スプレッドシートから一覧を取得中...</div>';
 
-            try {
-                const url = `${gasWebAppUrl}?action=list`;
-                const res = await fetch(url, { method: 'GET', redirect: 'follow' });
-                const json = await res.json();
-
-                if (json.status === 'success' && Array.isArray(json.list)) {
-                    if (json.list.length === 0) {
-                        container.innerHTML = '<div class="text-center py-2 text-slate-500">まだスプレッドシートに保存されたプリントはありません。</div>';
-                        return;
-                    }
-                    // セットを上に、単体は学年・学期順にソート
-                    const sets = json.list.filter(i => i.kind === 'set');
-                    const singles = json.list.filter(i => i.kind !== 'set').sort((a, b) => a.key.localeCompare(b.key));
-                    container.innerHTML = '';
-                    sets.forEach(item => {
-                        const row = document.createElement('div');
-                        row.className = 'flex items-center justify-between bg-indigo-50 px-3 py-2 rounded-lg border border-indigo-200 mb-1.5 hover:border-indigo-400 transition';
-                        const left = document.createElement('div');
-                        left.innerHTML = `
-                            <span class="font-bold text-indigo-800">📦 セット「${escapeHtml(item.name)}」</span>
-                            ${item.updatedAt ? `<span class="text-[10px] text-slate-400 ml-2">(${escapeHtml(item.updatedAt)})</span>` : ''}
-                        `;
-                        const btn = document.createElement('button');
-                        btn.className = 'bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-3 py-1 rounded text-[11px] cursor-pointer shrink-0';
-                        btn.textContent = '呼び出す';
-                        btn.addEventListener('click', () => loadNamedSet(item.name));
-                        row.appendChild(left);
-                        row.appendChild(btn);
-                        container.appendChild(row);
-                    });
-                    singles.forEach(item => {
-                        const row = document.createElement('div');
-                        row.className = 'flex items-center justify-between bg-white px-3 py-2 rounded-lg border border-slate-200 mb-1.5 last:mb-0 hover:border-emerald-400 transition';
-                        row.innerHTML = `
-                            <div>
-                                <span class="font-bold text-slate-800">${escapeHtml(item.grade)}年 ${escapeHtml(item.term)}学期</span>
-                                <span class="text-slate-600 ml-2">${escapeHtml(item.title)}</span>
-                                ${item.updatedAt ? `<span class="text-[10px] text-slate-400 ml-2">(${escapeHtml(item.updatedAt)})</span>` : ''}
-                            </div>
-                            <button onclick="restoreFromSheets('${escapeHtml(item.grade)}', '${escapeHtml(item.term)}')" class="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-3 py-1 rounded text-[11px] cursor-pointer shrink-0">
-                                呼び出す
-                            </button>
-                        `;
-                        container.appendChild(row);
-                    });
-                } else {
-                    container.innerHTML = '<div class="text-rose-600">一覧の取得に失敗しました。GASコードを最新版に更新して再デプロイしてください。</div>';
-                }
-            } catch (err) {
-                container.innerHTML = '<div class="text-rose-600">通信エラー：URLが正しいか、GASのアクセス権限が「全員」になっているか確認してください。</div>';
-            }
-        }
-
-        // CSVエクスポート（スプレッドシートに直接インポート可能）
-        function exportCSV() {
-            const data = getCurrentData();
-            const rows = [
-                ['問題番号', '種別', '出題文字', '模範解答', '学年', '学期', 'プリント題名']
-            ];
-            data.questions.forEach(q => {
-                rows.push([
-                    q.num,
-                    q.num <= 24 ? '書き' : '読み',
-                    `"${(q.prompt || '').replace(/"/g, '""')}"`,
-                    `"${(q.answer || '').replace(/"/g, '""')}"`,
-                    currentGrade,
-                    currentTerm,
-                    `"${(data.title || '').replace(/"/g, '""')}"`
-                ]);
-            });
-            // Excel・スプレッドシートで文字化けしないようUTF-8 BOM付きで出力
-            const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
-            const csvContent = rows.map(r => r.join(',')).join('\r\n');
-            const blob = new Blob([bom, csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `漢字対策プリント_${currentGrade}年${currentTerm}学期.csv`;
-            a.click();
-            URL.revokeObjectURL(url);
-            showToast('スプレッドシート用CSVをダウンロードしました');
-        }
-
-        // CSVインポート
-        function importCSV(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const text = e.target.result;
-                    const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
-                    const data = getCurrentData();
-                    // 1行目はヘッダーとしてスキップ
-                    for (let i = 1; i < lines.length && i <= TOTAL_QUESTIONS; i++) {
-                        const cols = parseCSVLine(lines[i]);
-                        if (cols.length >= 4) {
-                            const qIdx = (parseInt(cols[0], 10) || i) - 1;
-                            if (qIdx >= 0 && qIdx < TOTAL_QUESTIONS) {
-                                data.questions[qIdx].prompt = cols[2] || '';
-                                data.questions[qIdx].answer = cols[3] || '';
-                            }
-                            if (i === 1 && cols[6]) {
-                                data.title = cols[6];
-                            }
-                        }
-                    }
-                    renderInputs();
-                    renderPreview();
-                    closeSheetsModal();
-                    showToast('CSVファイルから問題を読み込みました！');
-                } catch (err) {
-                    showToast('CSVファイルの形式が正しくありません', 'error');
-                }
-                event.target.value = '';
-            };
-            reader.readAsText(file, 'UTF-8');
-        }
 
         function parseCSVLine(line) {
             const result = [];
